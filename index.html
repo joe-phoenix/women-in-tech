@@ -684,6 +684,21 @@
   .footer-brand span { color: var(--gold); }
   .footer-copy { font-family: 'Space Mono', monospace; font-size: 10px; color: rgba(255,255,255,0.3); letter-spacing: 0.06em; }
 
+
+  /* ── AVATAR IMAGE ── */
+  .avatar img, .td-avatar img, .panel-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    border-radius: 50%;
+    display: block;
+  }
+  .avatar.has-img, .td-avatar.has-img, .panel-avatar.has-img {
+    background: var(--ivory-mid, #EDE8DF);
+    padding: 0;
+    overflow: hidden;
+  }
+
   /* ── AVATAR COLOURS ── */
   .av-1 { background: linear-gradient(135deg, #2D4A7A, #4A7AB5); }
   .av-2 { background: linear-gradient(135deg, #6B3A5C, #A85E8A); }
@@ -847,6 +862,7 @@ const FIELDS = {
   businessDesc: 'Description of Business',
   linkedin:     'Linkedin URL',
   website:      'Website',
+  photo:        'Profile Pic',
 };
 
 // ── STATE ──
@@ -859,6 +875,17 @@ let sortDir      = null; // null | 'asc' | 'desc'
 let currentPage  = 1;
 const PAGE_SIZE  = 25;
 const AVATAR_COLORS = ['av-1','av-2','av-3','av-4','av-5','av-6'];
+
+// ── PHOTO HELPER ──
+// Baserow File field returns [{url, name, thumbnails, ...}]
+function getPhotoUrl(field) {
+  if (!field || !Array.isArray(field) || field.length === 0) return null;
+  // prefer thumbnail for performance, fall back to full url
+  const f = field[0];
+  return (f.thumbnails && f.thumbnails.small && f.thumbnails.small.url)
+    ? f.thumbnails.small.url
+    : f.url || null;
+}
 
 // ── FIELD HELPERS ──
 // Single Select → string
@@ -877,6 +904,26 @@ function vals(field) {
 
 // ── AVATAR ──
 function avatarClass(idx) { return AVATAR_COLORS[idx % AVATAR_COLORS.length]; }
+function avatarHTML(d, idx, sizeClass) {
+  const photoUrl = getPhotoUrl(d[FIELDS.photo]);
+  const name = val(d[FIELDS.name]);
+  const fallbackClass = avatarClass(idx);
+  const ini = initials(name);
+  if (photoUrl) {
+    return '<div class="' + sizeClass + ' has-img" data-fallback-class="' + fallbackClass + '" data-fallback-text="' + ini + '">' +
+      '<img src="' + photoUrl + '" alt="' + name + '" loading="lazy" onload="this.parentElement.classList.add("loaded")" onerror="imgFallback(this.parentElement)"/>' +
+      '</div>';
+  }
+  return '<div class="' + sizeClass + ' ' + fallbackClass + '">' + ini + '</div>';
+}
+
+function imgFallback(el) {
+  const fc = el.getAttribute('data-fallback-class') || 'av-1';
+  const ft = el.getAttribute('data-fallback-text') || '?';
+  el.classList.remove('has-img');
+  el.classList.add(fc);
+  el.textContent = ft;
+}
 function initials(name) {
   if (!name) return '?';
   const parts = name.trim().split(' ');
@@ -1116,7 +1163,7 @@ function renderCards(pageData) {
   document.getElementById('card-grid').innerHTML = pageData.map((d, i) => `
     <div class="person-card" onclick="openDetail(${d.id})" data-id="${d.id}">
       <div class="card-top">
-        <div class="avatar ${avatarClass(i)}">${initials(val(d[FIELDS.name]))}</div>
+        ${avatarHTML(d, i, 'avatar')}
         <div class="card-info">
           <div class="card-name">${val(d[FIELDS.name]) || '—'}</div>
           <div class="card-role">${vals(d[FIELDS.role]).join(', ') || ''}</div>
@@ -1141,7 +1188,7 @@ function renderTable(pageData) {
     <tr onclick="openDetail(${d.id})" class="${selectedId === d.id ? 'active' : ''}" data-id="${d.id}">
       <td>
         <div class="td-name">
-          <div class="td-avatar ${avatarClass(i)}">${initials(val(d[FIELDS.name]))}</div>
+          ${avatarHTML(d, i, 'td-avatar')}
           <span class="td-name-text">${val(d[FIELDS.name]) || '—'}</span>
         </div>
       </td>
@@ -1184,7 +1231,7 @@ function buildDetailHTML(d, i) {
       <button class="panel-close" onclick="closeDetail()">
         <svg viewBox="0 0 14 14" fill="none"><path d="M2 2l10 10M12 2L2 12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       </button>
-      <div class="panel-avatar ${avatarClass(i)}">${initials(name)}</div>
+      ${avatarHTML(d, i, 'panel-avatar')}
       <div class="panel-name">${name}</div>
       ${role ? `<div class="panel-role">${role}</div>` : ''}
       <div class="panel-meta-row">
