@@ -497,10 +497,14 @@
 
   .panel-header {
     background: var(--navy);
-    padding: 28px 28px 24px;
+    padding: 32px 28px 28px;
     position: relative;
     flex-shrink: 0;
     border-radius: 16px 16px 0 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
   }
   .panel-close {
     position: absolute;
@@ -519,34 +523,51 @@
   .panel-close:hover { background: rgba(255,255,255,0.2); }
   .panel-close svg { width: 14px; height: 14px; }
   .panel-avatar {
-    width: 72px; height: 72px;
+    width: 96px; height: 96px;
     border-radius: 50%;
     display: flex;
     align-items: center;
     justify-content: center;
     font-family: 'DM Serif Display', serif;
-    font-size: 28px;
+    font-size: 34px;
     color: var(--white);
     font-style: italic;
-    margin-bottom: 14px;
-    border: 3px solid rgba(212,168,71,0.4);
+    margin-bottom: 16px;
+    border: 3px solid rgba(212,168,71,0.5);
+    flex-shrink: 0;
   }
   .panel-name {
-    font-family: 'DM Serif Display', serif;
+    font-family: 'DM Sans', sans-serif;
     font-size: 22px;
+    font-weight: 700;
     color: var(--white);
     line-height: 1.15;
     margin-bottom: 4px;
   }
-  .panel-role { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 14px; }
-  .panel-meta-row { display: flex; gap: 8px; flex-wrap: wrap; }
+  .panel-role { font-size: 13px; color: rgba(255,255,255,0.6); margin-bottom: 16px; }
+  .panel-meta-row { display: flex; gap: 8px; flex-wrap: wrap; justify-content: center; }
   .panel-meta-chip {
     font-family: 'Space Mono', monospace;
     font-size: 10px;
-    padding: 4px 10px;
-    border-radius: 2px;
+    padding: 6px 12px;
+    border-radius: 4px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 1px;
+    min-width: 80px;
+  }
+  .chip-label {
+    font-size: 9px;
+    opacity: 0.6;
+    letter-spacing: 0.08em;
     text-transform: uppercase;
-    letter-spacing: 0.06em;
+  }
+  .chip-value {
+    font-size: 11px;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+    font-weight: 700;
   }
   .chip-country  { background: rgba(212,168,71,0.2);  color: var(--gold-light); }
   .chip-category { background: rgba(139,168,136,0.2); color: #A8D0A5; }
@@ -1235,8 +1256,8 @@ function buildDetailHTML(d, i) {
       <div class="panel-name">${name}</div>
       ${role ? `<div class="panel-role">${role}</div>` : ''}
       <div class="panel-meta-row">
-        ${country  ? `<span class="panel-meta-chip chip-country">${country}</span>`   : ''}
-        ${category ? `<span class="panel-meta-chip chip-category">${category}</span>` : ''}
+        ${country  ? `<span class="panel-meta-chip chip-country"><span class="chip-label">Country</span><span class="chip-value">${country}</span></span>`   : ''}
+        ${category ? `<span class="panel-meta-chip chip-category"><span class="chip-label">Sector</span><span class="chip-value">${category}</span></span>` : ''}
       </div>
     </div>
     <div class="panel-body">
