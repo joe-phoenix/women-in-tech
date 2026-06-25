@@ -558,12 +558,14 @@
     min-width: 80px;
   }
   .chip-label {
+    font-family: 'DM Sans', sans-serif;
     font-size: 9px;
     opacity: 0.6;
     letter-spacing: 0.08em;
     text-transform: uppercase;
   }
   .chip-value {
+    font-family: 'DM Sans', sans-serif;
     font-size: 11px;
     letter-spacing: 0.05em;
     text-transform: uppercase;
@@ -901,11 +903,17 @@ const AVATAR_COLORS = ['av-1','av-2','av-3','av-4','av-5','av-6'];
 // Baserow File field returns [{url, name, thumbnails, ...}]
 function getPhotoUrl(field) {
   if (!field || !Array.isArray(field) || field.length === 0) return null;
-  // prefer thumbnail for performance, fall back to full url
   const f = field[0];
-  return (f.thumbnails && f.thumbnails.small && f.thumbnails.small.url)
-    ? f.thumbnails.small.url
-    : f.url || null;
+  // Use medium thumbnail if available (good quality, smaller than full)
+  // Fall back to full URL — avoid small thumbnail which is blurry
+  if (f.thumbnails) {
+    return (f.thumbnails.card_cover && f.thumbnails.card_cover.url)
+      ? f.thumbnails.card_cover.url
+      : (f.thumbnails.medium && f.thumbnails.medium.url)
+        ? f.thumbnails.medium.url
+        : f.url || null;
+  }
+  return f.url || null;
 }
 
 // ── FIELD HELPERS ──
