@@ -616,6 +616,59 @@
     font-family: 'Space Mono', monospace;
   }
 
+
+  /* ── PAGINATION ── */
+  .pagination {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 6px;
+    padding: 28px 0 8px;
+    flex-wrap: wrap;
+  }
+  .page-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    padding: 6px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--white);
+    color: var(--text-secondary);
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+    min-width: 36px;
+    text-align: center;
+  }
+  .page-btn:hover:not(:disabled) { background: var(--ivory); border-color: var(--navy); color: var(--navy); }
+  .page-btn.active { background: var(--navy); color: var(--gold); border-color: var(--navy); }
+  .page-btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .page-info {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--text-muted);
+    letter-spacing: 0.06em;
+    padding: 0 8px;
+  }
+
+  /* ── CLEAR FILTERS ── */
+  .clear-all-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    color: var(--coral);
+    background: none;
+    border: 1px solid rgba(232,103,74,0.3);
+    border-radius: var(--radius);
+    padding: 5px 10px;
+    cursor: pointer;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    transition: background 0.15s, border-color 0.15s;
+    white-space: nowrap;
+    display: none;
+  }
+  .clear-all-btn.visible { display: inline-block; }
+  .clear-all-btn:hover { background: rgba(232,103,74,0.08); border-color: var(--coral); }
+
   /* ── FOOTER ── */
   .site-footer {
     background: var(--navy-mid);
@@ -716,12 +769,13 @@
     <div class="multi-select-wrap" id="role-wrap">
       <button class="multi-select-btn" id="role-btn" onclick="toggleRoleDropdown(event)">All Roles</button>
       <div class="multi-select-dropdown" id="role-dropdown">
-        <button class="multi-select-clear" onclick="clearRoles()">Clear selection</button>
+        <button class="multi-select-clear" id="role-clear" onclick="clearRoles()" style="display:none">Clear roles</button>
       </div>
     </div>
     <select class="filter-select" id="filter-country">
       <option value="">All Countries</option>
     </select>
+    <button class="clear-all-btn" id="clear-all-btn" onclick="clearAllFilters()">✕ Clear filters</button>
   </div>
 </div>
 
@@ -756,6 +810,7 @@
         <tbody id="table-body"></tbody>
       </table>
     </div>
+    <div id="pagination" class="pagination" style="display:none"></div>
     <div class="empty-state" id="empty-state" style="display:none">
       <svg viewBox="0 0 48 48" fill="none"><circle cx="24" cy="24" r="20" stroke="currentColor" stroke-width="1.5"/><path d="M16 24h16M24 16v16" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>
       <h3>No results found</h3>
@@ -801,6 +856,8 @@ let currentView  = 'cards';
 let selectedId   = null;
 let selectedRoles = new Set();
 let sortDir      = null; // null | 'asc' | 'desc'
+let currentPage  = 1;
+const PAGE_SIZE  = 25;
 const AVATAR_COLORS = ['av-1','av-2','av-3','av-4','av-5','av-6'];
 
 // ── FIELD HELPERS ──
@@ -915,6 +972,7 @@ function clearRoles() {
   selectedRoles.clear();
   document.querySelectorAll('#role-dropdown input[type="checkbox"]').forEach(cb => cb.checked = false);
   updateRoleBtn();
+  updateClearBtn();
   applyFilters();
 }
 
@@ -924,6 +982,8 @@ function updateRoleBtn() {
   else if (selectedRoles.size === 1) btn.textContent = [...selectedRoles][0];
   else                                btn.textContent = selectedRoles.size + ' roles';
   btn.classList.toggle('active', selectedRoles.size > 0);
+  const clearInner = document.getElementById('role-clear');
+  if (clearInner) clearInner.style.display = selectedRoles.size > 0 ? 'block' : 'none';
 }
 
 document.addEventListener('click', e => {
@@ -950,7 +1010,25 @@ function applyFilters() {
   });
 
   applySortToFiltered();
+  currentPage = 1; // reset to first page on any filter change
+  updateClearBtn();
   render();
+}
+
+function clearAllFilters() {
+  document.getElementById('search-input').value = '';
+  document.getElementById('filter-category').value = '';
+  document.getElementById('filter-country').value = '';
+  clearRoles();
+  // clearRoles already calls applyFilters
+}
+
+function updateClearBtn() {
+  const search  = document.getElementById('search-input').value.trim();
+  const cat     = document.getElementById('filter-category').value;
+  const country = document.getElementById('filter-country').value;
+  const hasFilter = search || cat || country || selectedRoles.size > 0;
+  document.getElementById('clear-all-btn').classList.toggle('visible', !!hasFilter);
 }
 
 ['search-input', 'filter-category', 'filter-country'].forEach(id => {
@@ -964,6 +1042,7 @@ function sortByName() {
   const th = document.getElementById('th-name');
   th.classList.toggle('sort-asc',  sortDir === 'asc');
   th.classList.toggle('sort-desc', sortDir === 'desc');
+  currentPage = 1;
   applySortToFiltered();
   render();
 }
@@ -982,19 +1061,59 @@ function render() {
   document.getElementById('loader').style.display = 'none';
   const isEmpty = filteredData.length === 0;
   document.getElementById('empty-state').style.display = isEmpty ? 'block' : 'none';
+  document.getElementById('pagination').style.display = isEmpty ? 'none' : 'flex';
   if (isEmpty) {
     document.getElementById('card-grid').style.display = 'none';
     document.getElementById('table-wrap').style.display = 'none';
     return;
   }
-  if (currentView === 'cards') renderCards();
-  else renderTable();
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  if (currentPage > totalPages) currentPage = totalPages;
+  const pageData = filteredData.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  if (currentView === 'cards') renderCards(pageData);
+  else renderTable(pageData);
+  renderPagination(totalPages);
 }
 
-function renderCards() {
+function renderPagination(totalPages) {
+  const el = document.getElementById('pagination');
+  if (totalPages <= 1) { el.style.display = 'none'; return; }
+  el.style.display = 'flex';
+  const start = (currentPage - 1) * PAGE_SIZE + 1;
+  const end   = Math.min(currentPage * PAGE_SIZE, filteredData.length);
+
+  // Build page numbers with ellipsis
+  const pages = [];
+  for (let i = 1; i <= totalPages; i++) {
+    if (i === 1 || i === totalPages || (i >= currentPage - 2 && i <= currentPage + 2)) {
+      pages.push(i);
+    } else if (pages[pages.length - 1] !== '...') {
+      pages.push('...');
+    }
+  }
+
+  el.innerHTML =
+    `<button class="page-btn" onclick="goToPage(${currentPage - 1})" ${currentPage === 1 ? 'disabled' : ''}>← Prev</button>` +
+    pages.map(p => p === '...'
+      ? `<span class="page-info">…</span>`
+      : `<button class="page-btn ${p === currentPage ? 'active' : ''}" onclick="goToPage(${p})">${p}</button>`
+    ).join('') +
+    `<button class="page-btn" onclick="goToPage(${currentPage + 1})" ${currentPage === totalPages ? 'disabled' : ''}>Next →</button>` +
+    `<span class="page-info">${start}–${end} of ${filteredData.length}</span>`;
+}
+
+function goToPage(page) {
+  const totalPages = Math.ceil(filteredData.length / PAGE_SIZE);
+  if (page < 1 || page > totalPages) return;
+  currentPage = page;
+  render();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+function renderCards(pageData) {
   document.getElementById('card-grid').style.display = 'grid';
   document.getElementById('table-wrap').style.display = 'none';
-  document.getElementById('card-grid').innerHTML = filteredData.map((d, i) => `
+  document.getElementById('card-grid').innerHTML = pageData.map((d, i) => `
     <div class="person-card" onclick="openDetail(${d.id})" data-id="${d.id}">
       <div class="card-top">
         <div class="avatar ${avatarClass(i)}">${initials(val(d[FIELDS.name]))}</div>
@@ -1015,10 +1134,10 @@ function renderCards() {
   `).join('');
 }
 
-function renderTable() {
+function renderTable(pageData) {
   document.getElementById('card-grid').style.display = 'none';
   document.getElementById('table-wrap').style.display = 'block';
-  document.getElementById('table-body').innerHTML = filteredData.map((d, i) => `
+  document.getElementById('table-body').innerHTML = pageData.map((d, i) => `
     <tr onclick="openDetail(${d.id})" class="${selectedId === d.id ? 'active' : ''}" data-id="${d.id}">
       <td>
         <div class="td-name">
